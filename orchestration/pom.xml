@@ -133,7 +133,7 @@
               <modelPackage>com.sap.ai.sdk.orchestration.client.model</modelPackage>
               <additionalProperties>
                 <pojoBuilderMethodName>create</pojoBuilderMethodName>
-                <pojoBuildMethodName />
+                <pojoBuildMethodName/>
                 <pojoConstructorVisibility>protected</pojoConstructorVisibility>
                 <enumUnknownDefaultCase>true</enumUnknownDefaultCase>
               </additionalProperties>
