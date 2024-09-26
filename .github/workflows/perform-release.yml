@@ -13,7 +13,7 @@ on:
         type: boolean
 
 env:
-  MVN_MULTI_THREADED_ARGS: --batch-mode --no-transfer-progress --fail-at-end --show-version --threads 1C
+  MVN_MULTI_THREADED_ARGS: --batch-mode --no-transfer-progress --fail-at-end --show-version --threads 1C -DskipTests
   JAVA_VERSION: 17
 
 jobs:
@@ -111,18 +111,23 @@ jobs:
         run: >
           mvn
           $MVN_CLI_ARGS
-          -DrepositoryId=local
-          -Durl=file:./temp_local_repo
-          -Dmaven.install.skip=true
-          -Dgpg.passphrase="$GPG_PASSPHRASE"
-          -Dgpg.keyname="$MAVEN_CENTRAL_USER"
+          -DaltDeploymentRepository=local::file:./temp_local_repo
+          -Dgpg.passphrase="${{ secrets.PGP_PASSPHRASE }}"
+          -Dgpg.keyname="${{ secrets.MAVEN_CENTRAL_USER }}"
           deploy
-        env:
-          MAVEN_CENTRAL_USER: ${{ secrets.MAVEN_CENTRAL_USER }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          GPG_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
 
-# step: deploy stating
+      - name: "Deploy Staging"
+        run: |
+          # Create an empty directory to correctly execute the plugin
+          mkdir temp
+          cd temp
+          MVN_ARGS="$MVN_CLI_ARGS org.sonatype.plugins:nexus-staging-maven-plugin:1.7.0:deploy-staged-repository -DserverId=ossrh -DnexusUrl=https://oss.sonatype.org -DrepositoryDirectory=./temp_local_repo -DstagingProfileId=$MAVEN_CENTRAL_PROFILE_ID"
+          mvn $MVN_ARGS
+
+        env:
+          MAVEN_CENTRAL_USER: ${{ secrets.SONATYPE_TOKEN_NAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASS }}
+          MAVEN_CENTRAL_PROFILE_ID: ${{ secrets.MAVEN_CENTRAL_PROFILE_ID }}
 
       - name: "Merge Code PR"
         if: ${{ inputs.skip-pr-merge != 'true' }}
