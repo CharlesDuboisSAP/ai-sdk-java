@@ -23,87 +23,57 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-/** Configuration for translation module */
+/** CompletionRequestConfigurationReferenceByIdConfigRef */
 // CHECKSTYLE:OFF
-public class TranslationModuleConfig
+public class CompletionRequestConfigurationReferenceByIdConfigRef
 // CHECKSTYLE:ON
 {
-  @JsonProperty("input")
-  private SAPDocumentTranslationInput input;
-
-  @JsonProperty("output")
-  private SAPDocumentTranslationOutput output;
+  @JsonProperty("id")
+  private String id;
 
   @JsonAnySetter @JsonAnyGetter
   private final Map<String, Object> cloudSdkCustomFields = new LinkedHashMap<>();
 
-  /** Default constructor for TranslationModuleConfig. */
-  protected TranslationModuleConfig() {}
+  /** Default constructor for CompletionRequestConfigurationReferenceByIdConfigRef. */
+  protected CompletionRequestConfigurationReferenceByIdConfigRef() {}
 
   /**
-   * Set the input of this {@link TranslationModuleConfig} instance and return the same instance.
+   * Set the id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef} instance and
+   * return the same instance.
    *
-   * @param input The input of this {@link TranslationModuleConfig}
-   * @return The same instance of this {@link TranslationModuleConfig} class
+   * @param id The id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef}
+   * @return The same instance of this {@link CompletionRequestConfigurationReferenceByIdConfigRef}
+   *     class
    */
   @Nonnull
-  public TranslationModuleConfig input(@Nullable final SAPDocumentTranslationInput input) {
-    this.input = input;
+  public CompletionRequestConfigurationReferenceByIdConfigRef id(@Nonnull final String id) {
+    this.id = id;
     return this;
   }
 
   /**
-   * Get input
+   * Get id
    *
-   * @return input The input of this {@link TranslationModuleConfig} instance.
+   * @return id The id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef}
+   *     instance.
    */
   @Nonnull
-  public SAPDocumentTranslationInput getInput() {
-    return input;
+  public String getId() {
+    return id;
   }
 
   /**
-   * Set the input of this {@link TranslationModuleConfig} instance.
+   * Set the id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef} instance.
    *
-   * @param input The input of this {@link TranslationModuleConfig}
+   * @param id The id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef}
    */
-  public void setInput(@Nullable final SAPDocumentTranslationInput input) {
-    this.input = input;
+  public void setId(@Nonnull final String id) {
+    this.id = id;
   }
 
   /**
-   * Set the output of this {@link TranslationModuleConfig} instance and return the same instance.
-   *
-   * @param output The output of this {@link TranslationModuleConfig}
-   * @return The same instance of this {@link TranslationModuleConfig} class
-   */
-  @Nonnull
-  public TranslationModuleConfig output(@Nullable final SAPDocumentTranslationOutput output) {
-    this.output = output;
-    return this;
-  }
-
-  /**
-   * Get output
-   *
-   * @return output The output of this {@link TranslationModuleConfig} instance.
-   */
-  @Nonnull
-  public SAPDocumentTranslationOutput getOutput() {
-    return output;
-  }
-
-  /**
-   * Set the output of this {@link TranslationModuleConfig} instance.
-   *
-   * @param output The output of this {@link TranslationModuleConfig}
-   */
-  public void setOutput(@Nullable final SAPDocumentTranslationOutput output) {
-    this.output = output;
-  }
-
-  /**
-   * Get the names of the unrecognizable properties of the {@link TranslationModuleConfig}.
+   * Get the names of the unrecognizable properties of the {@link
+   * CompletionRequestConfigurationReferenceByIdConfigRef}.
    *
    * @return The set of properties names
    */
@@ -114,7 +84,8 @@ public class TranslationModuleConfig
   }
 
   /**
-   * Get the value of an unrecognizable property of this {@link TranslationModuleConfig} instance.
+   * Get the value of an unrecognizable property of this {@link
+   * CompletionRequestConfigurationReferenceByIdConfigRef} instance.
    *
    * @deprecated Use {@link #toMap()} instead.
    * @param name The name of the property
@@ -126,14 +97,17 @@ public class TranslationModuleConfig
   public Object getCustomField(@Nonnull final String name) throws NoSuchElementException {
     if (!cloudSdkCustomFields.containsKey(name)) {
       throw new NoSuchElementException(
-          "TranslationModuleConfig has no field with name '" + name + "'.");
+          "CompletionRequestConfigurationReferenceByIdConfigRef has no field with name '"
+              + name
+              + "'.");
     }
     return cloudSdkCustomFields.get(name);
   }
 
   /**
-   * Get the value of all properties of this {@link TranslationModuleConfig} instance including
-   * unrecognized properties.
+   * Get the value of all properties of this {@link
+   * CompletionRequestConfigurationReferenceByIdConfigRef} instance including unrecognized
+   * properties.
    *
    * @return The map of all properties
    */
@@ -141,14 +115,14 @@ public class TranslationModuleConfig
   @Nonnull
   public Map<String, Object> toMap() {
     final Map<String, Object> declaredFields = new LinkedHashMap<>(cloudSdkCustomFields);
-    if (input != null) declaredFields.put("input", input);
-    if (output != null) declaredFields.put("output", output);
+    if (id != null) declaredFields.put("id", id);
     return declaredFields;
   }
 
   /**
-   * Set an unrecognizable property of this {@link TranslationModuleConfig} instance. If the map
-   * previously contained a mapping for the key, the old value is replaced by the specified value.
+   * Set an unrecognizable property of this {@link
+   * CompletionRequestConfigurationReferenceByIdConfigRef} instance. If the map previously contained
+   * a mapping for the key, the old value is replaced by the specified value.
    *
    * @param customFieldName The name of the property
    * @param customFieldValue The value of the property
@@ -166,24 +140,26 @@ public class TranslationModuleConfig
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final TranslationModuleConfig translationModuleConfig = (TranslationModuleConfig) o;
-    return Objects.equals(this.cloudSdkCustomFields, translationModuleConfig.cloudSdkCustomFields)
-        && Objects.equals(this.input, translationModuleConfig.input)
-        && Objects.equals(this.output, translationModuleConfig.output);
+    final CompletionRequestConfigurationReferenceByIdConfigRef
+        completionRequestConfigurationReferenceByIdConfigRef =
+            (CompletionRequestConfigurationReferenceByIdConfigRef) o;
+    return Objects.equals(
+            this.cloudSdkCustomFields,
+            completionRequestConfigurationReferenceByIdConfigRef.cloudSdkCustomFields)
+        && Objects.equals(this.id, completionRequestConfigurationReferenceByIdConfigRef.id);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(input, output, cloudSdkCustomFields);
+    return Objects.hash(id, cloudSdkCustomFields);
   }
 
   @Override
   @Nonnull
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("class TranslationModuleConfig {\n");
-    sb.append("    input: ").append(toIndentedString(input)).append("\n");
-    sb.append("    output: ").append(toIndentedString(output)).append("\n");
+    sb.append("class CompletionRequestConfigurationReferenceByIdConfigRef {\n");
+    sb.append("    id: ").append(toIndentedString(id)).append("\n");
     cloudSdkCustomFields.forEach(
         (k, v) ->
             sb.append("    ").append(k).append(": ").append(toIndentedString(v)).append("\n"));
@@ -201,8 +177,22 @@ public class TranslationModuleConfig
     return o.toString().replace("\n", "\n    ");
   }
 
-  /** Create a new {@link TranslationModuleConfig} instance. No arguments are required. */
-  public static TranslationModuleConfig create() {
-    return new TranslationModuleConfig();
+  /**
+   * Create a type-safe, fluent-api builder object to construct a new {@link
+   * CompletionRequestConfigurationReferenceByIdConfigRef} instance with all required arguments.
+   */
+  public static Builder create() {
+    return (id) -> new CompletionRequestConfigurationReferenceByIdConfigRef().id(id);
+  }
+
+  /** Builder helper class. */
+  public interface Builder {
+    /**
+     * Set the id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef} instance.
+     *
+     * @param id The id of this {@link CompletionRequestConfigurationReferenceByIdConfigRef}
+     * @return The CompletionRequestConfigurationReferenceByIdConfigRef instance.
+     */
+    CompletionRequestConfigurationReferenceByIdConfigRef id(@Nonnull final String id);
   }
 }
