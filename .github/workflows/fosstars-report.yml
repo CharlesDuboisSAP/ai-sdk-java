@@ -19,7 +19,6 @@ jobs:
       contents: read
       actions: write
       id-token: write
-      publish_results: true
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v5
