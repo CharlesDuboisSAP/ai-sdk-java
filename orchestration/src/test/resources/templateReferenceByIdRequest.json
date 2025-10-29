@@ -12,11 +12,14 @@
             "top_p": 1,
             "n": 1
           },
-          "version": "latest"
+          "version": "latest",
+          "timeout" : 600,
+          "max_retries" : 2
         },
         "prompt": {
           "template_ref": {
-            "id": "21cb1358-0bf1-4f43-870b-00f14d0f9f16"
+            "id": "21cb1358-0bf1-4f43-870b-00f14d0f9f16",
+            "scope" : "tenant"
           }
         }
       }

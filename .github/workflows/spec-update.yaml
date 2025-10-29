@@ -27,11 +27,14 @@ on:
 env:
   MVN_MULTI_THREADED_ARGS: --batch-mode --no-transfer-progress --fail-at-end --show-version --threads 1C
   JAVA_VERSION: 17
+  # keep the following two variables in sync with our 'cache-maven-dependencies.yaml' workflow
+  MAVEN_CACHE_KEY: maven-dependencies
+  MAVEN_CACHE_DIR: ~/.m2
 
 jobs:
   generate:
     name: "Download, Generate, Compile and Push"
-    runs-on: [ubuntu-latest]
+    runs-on: [ ubuntu-latest ]
     permissions:
       pull-requests: write
       contents: write
@@ -48,21 +51,23 @@ jobs:
       CREATE_PR: ${{ github.event.inputs.create-pr }}
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.BOT_SDK_JS_FOR_DOCS_REPO_PR }}
 
       - name: "Setup Java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "sapmachine"
           java-version: ${{ env.JAVA_VERSION }}
           cache: 'maven'
 
-      - name: "Install Baseline SDK Version"
-        # this is needed as otherwise "process sources" will fail on e.g. orchestration module, if the core module isn't in the maven cache
-        run: |
-          mvn install -DskipTests
+      - name: "Restore Dependencies"
+        id: restore-dependencies
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ env.MAVEN_CACHE_KEY }}
+          path: ${{ env.MAVEN_CACHE_DIR }}
 
       - name: "Checkout or Create Branch"
         id: branch
@@ -92,7 +97,7 @@ jobs:
               FILE_PATH='orchestration/src/main/resources/spec/orchestration.yaml'
               ;;
             prompt-registry)
-              API_URL="$API_BASE_URL/AI/prompt-registry/contents/src/spec/prompt-registry.yaml?ref=$REF"
+              API_URL="$API_BASE_URL/AI/prompt-registry/contents/src/spec/generated/prompt-registry-combined.yaml?ref=$REF"
               FILE_PATH='core-services/prompt-registry/src/main/resources/spec/prompt-registry.yaml'
               ;;
           esac
@@ -114,7 +119,11 @@ jobs:
         id: generate
         if: steps.spec_diff.outputs.spec_diff == 'true'
         run: |
-          mvn process-sources -Dgenerate ${{ env.MVN_MULTI_THREADED_ARGS }}
+          if mvn install -DskipTests -Dgenerate ${{ env.MVN_MULTI_THREADED_ARGS }} ; then
+            echo "generation_result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "generation_result=failure" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: "Compile and Test"
         id: compile
@@ -191,9 +200,15 @@ jobs:
           echo "| Spec File Changes | ${{ steps.spec_diff.outputs.spec_diff == 'true' && '🔄 Changes Detected' || '⏹️ No Changes' }}" >> $GITHUB_STEP_SUMMARY
           
           if ${{ steps.spec_diff.outputs.spec_diff == 'true' }}; then
-            echo "| Client Generation | ${{ steps.generate.outcome == 'success' && '✅' || '❌' }} ${{ steps.generate.outcome }}" >> $GITHUB_STEP_SUMMARY
+            echo "| Client Generation | ${{ steps.generate.outputs.generation_result == 'success' && '✅' || '❌' }} ${{ steps.generate.outputs.generation_result }}" >> $GITHUB_STEP_SUMMARY
             echo "| Client Compilation | ${{ steps.compile.outputs.compilation_result == 'success' && '✅' || '❌' }} ${{ steps.compile.outputs.compilation_result }}" >> $GITHUB_STEP_SUMMARY
             echo "| Client Testing | ${{ steps.compile.outputs.test_result == 'success' && '✅' || steps.compile.outputs.test_result == 'skipped' && '⏩' || '❌' }} ${{ steps.compile.outputs.test_result }}" >> $GITHUB_STEP_SUMMARY
             echo "| Branch Creation | ${{ steps.push.outcome == 'success' && '✅ [Branch Link]($DIFF_URL)' || '❌ failure' }}" >> $GITHUB_STEP_SUMMARY
             echo "| Pull Request Creation | ${{ env.CREATE_PR == 'false' && '⏩ skipped' || '' }}${{ env.CREATE_PR == 'true' && steps.push.outcome == 'success' && '✅ [PR Link]($PR_URL)' || '' }}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: "Fail if generation failed"
+        if: steps.generate.outputs.generation_result == 'failure'
+        run: |
+          echo "Client generation failed. Please check the Generate step logs for details."
+          exit 1

@@ -48,14 +48,13 @@ public class SpringAiAgenticWorkflowService {
     val options = new OrchestrationChatOptions(config);
     options.setToolCallbacks(
         List.of(ToolCallbacks.from(new WeatherMethod(), new RestaurantMethod())));
-    options.setInternalToolExecutionEnabled(true);
 
     //    Prompts for the chain workflow
     final List<String> systemPrompts =
         List.of(
             "You are a traveling planning agent for a single day trip. Where appropriate, use the provided tools. First, start by suggesting some restaurants for the mentioned city.",
             "Now, check the whether for the city.",
-            "Finally, combine the suggested itinerary from this conversation into a short, one-sentence plan for the day trip.");
+            "Finally, combine the suggested itinerary from this conversation into a short, one-sentence plan for the day trip. Make sure to include all the restaurants suggested by the tools and the actual temperature in your reply.");
 
     //    Perform the chain workflow
     String responseText = userInput;

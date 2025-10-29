@@ -1,6 +1,5 @@
 package com.sap.ai.sdk.foundationmodels.openai;
 
-import com.google.common.annotations.Beta;
 import com.sap.ai.sdk.foundationmodels.openai.generated.model.ChatCompletionNamedToolChoice;
 import com.sap.ai.sdk.foundationmodels.openai.generated.model.ChatCompletionNamedToolChoiceFunction;
 import com.sap.ai.sdk.foundationmodels.openai.generated.model.ChatCompletionToolChoiceOption;
@@ -14,7 +13,6 @@ import lombok.RequiredArgsConstructor;
  *
  * @since 1.4.0
  */
-@Beta
 @EqualsAndHashCode
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public class OpenAiToolChoice {
@@ -41,7 +39,7 @@ public class OpenAiToolChoice {
   @Nonnull
   public static OpenAiToolChoice function(@Nonnull final String functionName) {
     return new OpenAiToolChoice(
-        ChatCompletionToolChoiceOption.create(
+        ChatCompletionToolChoiceOption.createInnerChatCompletionNamedToolChoice(
             new ChatCompletionNamedToolChoice()
                 .type(ChatCompletionNamedToolChoice.TypeEnum.FUNCTION)
                 .function(new ChatCompletionNamedToolChoiceFunction().name(functionName))));

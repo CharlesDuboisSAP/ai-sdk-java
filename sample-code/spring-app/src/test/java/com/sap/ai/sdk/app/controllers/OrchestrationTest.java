@@ -1,6 +1,7 @@
 package com.sap.ai.sdk.app.controllers;
 
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GEMINI_2_5_FLASH;
+import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GPT_5;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.Parameter.TEMPERATURE;
 import static com.sap.ai.sdk.orchestration.model.AzureThreshold.*;
 import static com.sap.ai.sdk.orchestration.model.ResponseChatMessage.RoleEnum.ASSISTANT;
@@ -22,6 +23,7 @@ import com.sap.ai.sdk.orchestration.TemplateConfig;
 import com.sap.ai.sdk.orchestration.TextItem;
 import com.sap.ai.sdk.orchestration.model.DPIEntities;
 import com.sap.ai.sdk.orchestration.model.GenericModuleResult;
+import com.sap.ai.sdk.orchestration.model.InputTranslationModuleResult;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -143,6 +145,25 @@ class OrchestrationTest {
     assertThat(maskedMessage)
         .describedAs("The masked input should not contain any user names")
         .doesNotContain("Alice", "Bob");
+
+    assertThat(result.getIntermediateResults().getOutputUnmasking()).isEmpty();
+  }
+
+  @Test
+  void testMaskingRegex() {
+    var response = service.maskingRegex();
+    var result = response.getOriginalResponse();
+    var llmChoice = result.getFinalResult().getChoices().get(0);
+    assertThat(llmChoice.getFinishReason()).isEqualTo("stop");
+
+    var maskingResult = result.getIntermediateResults().getInputMasking();
+    assertThat(maskingResult.getMessage()).isNotEmpty();
+    var data = (Map<String, Object>) maskingResult.getData();
+    var maskedMessage = (String) data.get("masked_template");
+    assertThat(maskedMessage)
+        .describedAs("The masked input should replace patient IDs with REDACTED_ID")
+        .doesNotContain("patient_id_123")
+        .contains("REDACTED_ID");
 
     assertThat(result.getIntermediateResults().getOutputUnmasking()).isEmpty();
   }
@@ -275,7 +296,7 @@ class OrchestrationTest {
     assertThat(response.getContent()).isNotEmpty();
 
     var filterResult = response.getOriginalResponse().getIntermediateResults().getOutputFiltering();
-    assertThat(filterResult.getMessage()).containsPattern("0 of \\d+ choices failed");
+    assertThat(filterResult.getMessage()).containsPattern("Choice 0: Output Filter was skipped");
   }
 
   @Test
@@ -449,13 +470,52 @@ class OrchestrationTest {
     assertThat(content).contains("Englisch");
     assertThat(content).contains("Der", "ist");
 
-    GenericModuleResult inputTranslation =
+    InputTranslationModuleResult inputTranslation =
         result.getOriginalResponse().getIntermediateResults().getInputTranslation();
     GenericModuleResult outputTranslation =
         result.getOriginalResponse().getIntermediateResults().getOutputTranslation();
     assertThat(inputTranslation).isNotNull();
     assertThat(outputTranslation).isNotNull();
-    assertThat(inputTranslation.getMessage()).isEqualTo("Input to LLM is translated successfully.");
+    assertThat(inputTranslation.getMessage())
+        .isEqualTo("Translated messages with roles: ['user']. ");
     assertThat(outputTranslation.getMessage()).isEqualTo("Output Translation successful");
+  }
+
+  @Test
+  void testEmbedding() {
+    val result = service.embed(List.of("Hi SAP Orchestration Service", "I am John Doe"));
+    val embeddingVectors = result.getEmbeddingVectors();
+
+    assertThat(embeddingVectors)
+        .isNotNull()
+        .hasSize(2)
+        .isInstanceOf(List.class)
+        .allSatisfy(vector -> assertThat(vector).isInstanceOf(float[].class));
+  }
+
+  @Test
+  void wrongModelVersion() {
+    val filterConfig =
+        new OrchestrationModuleConfig()
+            .withInputFiltering(new AzureContentFilter().hate(AzureFilterThreshold.ALLOW_SAFE));
+    val prompt = new OrchestrationPrompt("HelloWorld!");
+
+    assertThatThrownBy(
+            () ->
+                client.chatCompletion(
+                    prompt, filterConfig.withLlmConfig(GPT_5.withName("wrong-model"))))
+        .isExactlyInstanceOf(OrchestrationClientException.class)
+        .hasMessageContaining("400")
+        .hasMessageContaining("Model name must be one of");
+
+    assertThatThrownBy(
+            () ->
+                client
+                    .streamChatCompletion(
+                        prompt, filterConfig.withLlmConfig(GPT_5.withVersion("wrong-version")))
+                    .forEach(System.out::println))
+        .isExactlyInstanceOf(OrchestrationClientException.class)
+        .hasMessageContaining("400")
+        .hasMessageContaining("Model gpt-5 in version wrong-version not found.");
   }
 }

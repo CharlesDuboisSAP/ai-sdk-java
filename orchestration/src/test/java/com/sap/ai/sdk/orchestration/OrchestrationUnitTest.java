@@ -3,6 +3,7 @@ package com.sap.ai.sdk.orchestration;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.jsonResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
@@ -12,7 +13,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.sap.ai.sdk.orchestration.AzureFilterThreshold.ALLOW_SAFE;
@@ -42,23 +42,11 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.sap.ai.sdk.orchestration.model.ChatDelta;
-import com.sap.ai.sdk.orchestration.model.DPIConfig;
 import com.sap.ai.sdk.orchestration.model.DPIEntities;
-import com.sap.ai.sdk.orchestration.model.DPIStandardEntity;
 import com.sap.ai.sdk.orchestration.model.DataRepositoryType;
 import com.sap.ai.sdk.orchestration.model.DocumentGroundingFilter;
-import com.sap.ai.sdk.orchestration.model.Embedding;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsInput;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsInputText;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsModelConfig;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsModelDetails;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsModelParams;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsModuleConfigs;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsOrchestrationConfig;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsPostRequest;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsPostResponse;
-import com.sap.ai.sdk.orchestration.model.EmbeddingsResponse;
 import com.sap.ai.sdk.orchestration.model.ErrorResponse;
+import com.sap.ai.sdk.orchestration.model.FilteringStreamOptions;
 import com.sap.ai.sdk.orchestration.model.GenericModuleResult;
 import com.sap.ai.sdk.orchestration.model.GroundingFilterSearchConfiguration;
 import com.sap.ai.sdk.orchestration.model.GroundingModuleConfig;
@@ -66,7 +54,6 @@ import com.sap.ai.sdk.orchestration.model.GroundingModuleConfigConfig;
 import com.sap.ai.sdk.orchestration.model.GroundingModuleConfigConfigPlaceholders;
 import com.sap.ai.sdk.orchestration.model.KeyValueListPair;
 import com.sap.ai.sdk.orchestration.model.LlamaGuard38b;
-import com.sap.ai.sdk.orchestration.model.MaskingModuleConfigProviders;
 import com.sap.ai.sdk.orchestration.model.ModuleResultsStreaming;
 import com.sap.ai.sdk.orchestration.model.ResponseFormatText;
 import com.sap.ai.sdk.orchestration.model.SearchDocumentKeyValueListPair;
@@ -77,9 +64,9 @@ import com.sap.ai.sdk.orchestration.model.UserChatMessageContent;
 import com.sap.cloud.sdk.cloudplatform.connectivity.ApacheHttpClient5Accessor;
 import com.sap.cloud.sdk.cloudplatform.connectivity.ApacheHttpClient5Cache;
 import com.sap.cloud.sdk.cloudplatform.connectivity.DefaultHttpDestination;
+import io.vavr.control.Try;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -118,6 +105,8 @@ class OrchestrationUnitTest {
 
   private final Function<String, InputStream> fileLoader =
       filename -> Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(filename));
+  private final Function<String, String> fileLoaderStr =
+      filename -> new String(Try.of(() -> fileLoader.apply(filename).readAllBytes()).get());
 
   private static OrchestrationClient client;
   private static OrchestrationModuleConfig config;
@@ -166,6 +155,33 @@ class OrchestrationUnitTest {
     assertThatThrownBy(() -> client.chatCompletion(prompt, config))
         .hasMessage(
             "Request failed with status 500 (Server Error): Internal Server Error located in Masking Module - Masking");
+  }
+
+  @Test
+  void testCustomHeaders() {
+    stubFor(
+        post(urlPathEqualTo("/v2/completion"))
+            .willReturn(
+                aResponse()
+                    .withBodyFile("templatingResponse.json")
+                    .withHeader("Content-Type", "application/json")));
+
+    final var clientWithHeader = client.withHeader("Header-For-Both", "value");
+    final var result = clientWithHeader.withHeader("foo", "bar").chatCompletion(prompt, config);
+    assertThat(result).isNotNull();
+
+    var streamResult =
+        clientWithHeader.withHeader("foot", "baz").streamChatCompletion(prompt, config);
+    assertThat(streamResult).isNotNull();
+
+    verify(
+        postRequestedFor(urlPathEqualTo("/v2/completion"))
+            .withHeader("Header-For-Both", equalTo("value"))
+            .withHeader("foo", equalTo("bar")));
+    verify(
+        postRequestedFor(urlPathEqualTo("/v2/completion"))
+            .withHeader("Header-For-Both", equalTo("value"))
+            .withHeader("foot", equalTo("baz")));
   }
 
   @Test
@@ -247,11 +263,9 @@ class OrchestrationUnitTest {
                 "masked_grounding_input", // maskGroundingInput: true will make this field present
                 "[\"What does Joule do?\"]"));
 
-    try (var requestInputStream = fileLoader.apply("groundingRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(
-          postRequestedFor(urlPathEqualTo("/v2/completion")).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("groundingRequest.json");
+    verify(
+        postRequestedFor(urlPathEqualTo("/v2/completion")).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -281,12 +295,10 @@ class OrchestrationUnitTest {
             "A fuzzy search is a search technique that is designed to be fast and tolerant of errors");
     assertThat(response.getContent()).startsWith("A fuzzy search is a search technique");
 
-    try (var requestInputStream = fileLoader.apply("groundingHelpSapComRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(
-          postRequestedFor(urlPathEqualTo("/v2/completion"))
-              .withRequestBody(equalToJson(request, true, true)));
-    }
+    final String request = fileLoaderStr.apply("groundingHelpSapComRequest.json");
+    verify(
+        postRequestedFor(urlPathEqualTo("/v2/completion"))
+            .withRequestBody(equalToJson(request, true, true)));
   }
 
   @Test
@@ -352,10 +364,8 @@ class OrchestrationUnitTest {
     assertThat(usage.getTotalTokens()).isEqualTo(26);
 
     // verify that null fields are absent from the sent request
-    try (var requestInputStream = fileLoader.apply("templatingRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("templatingRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -420,10 +430,61 @@ class OrchestrationUnitTest {
     // the result is asserted in the verify step below
 
     // verify that null fields are absent from the sent request
-    try (var requestInputStream = fileLoader.apply("filteringLooseRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request, true, true)));
-    }
+    final String request = fileLoaderStr.apply("filteringLooseRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request, true, true)));
+  }
+
+  @Test
+  void filteringLooseStream() throws IOException {
+    final var res = new String(fileLoader.apply("streamChatCompletion.txt").readAllBytes());
+    stubFor(
+        post(anyUrl())
+            .willReturn(aResponse().withBody(res).withHeader("Content-Type", "application/json")));
+
+    final var azureFilter =
+        new AzureContentFilter()
+            .hate(ALLOW_SAFE_LOW_MEDIUM)
+            .selfHarm(ALLOW_SAFE_LOW_MEDIUM)
+            .sexual(ALLOW_SAFE_LOW_MEDIUM)
+            .violence(ALLOW_SAFE_LOW_MEDIUM);
+
+    final var llamaFilter = new LlamaGuardFilter().config(LlamaGuard38b.create().selfHarm(true));
+
+    OrchestrationModuleConfig myConfig =
+        config
+            .withInputFiltering(azureFilter, llamaFilter)
+            .withOutputFiltering(azureFilter)
+            .withOutputFilteringStreamOptions(FilteringStreamOptions.create().overlap(1_000));
+
+    Stream<String> result = client.streamChatCompletion(prompt, myConfig);
+    assertThat(result).containsExactly("", "Sure", "!");
+    // the result is asserted in the verify step below
+
+    // verify that null fields are absent from the sent request
+    final String request = fileLoaderStr.apply("filteringLooseRequestStream.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request, true, false)));
+  }
+
+  @Test
+  void convenienceConfig() {
+    final var azureFilter = new AzureContentFilter().hate(ALLOW_SAFE_LOW_MEDIUM);
+
+    OrchestrationModuleConfig myConfig =
+        config
+            .withOutputFiltering(azureFilter)
+            .withOutputFilteringStreamOptions(FilteringStreamOptions.create().overlap(1_000));
+    OrchestrationModuleConfig myConfig2 =
+        config
+            .withOutputFiltering(azureFilter)
+            .withStreamConfig(new OrchestrationStreamConfig().withFilterOverlap(1_000));
+    assertThat(myConfig).isEqualTo(myConfig2);
+
+    OrchestrationModuleConfig myConfig3 =
+        config
+            .withOutputFiltering(azureFilter)
+            .withStreamConfig(
+                new OrchestrationStreamConfig().withFilterOverlap(1_000).withChunkSize(10));
+    assertThat(myConfig2).isNotEqualTo(myConfig3);
   }
 
   @Test
@@ -560,10 +621,8 @@ class OrchestrationUnitTest {
         .isEqualTo("26ea36b5-c196-4806-a9a6-a686f0c6ad91");
 
     // verify that the history is sent correctly
-    try (var requestInputStream = fileLoader.apply("messagesHistoryRequest.json")) {
-      final String requestBody = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(requestBody)));
-    }
+    final String requestBody = fileLoaderStr.apply("messagesHistoryRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(requestBody)));
   }
 
   @Test
@@ -588,10 +647,8 @@ class OrchestrationUnitTest {
     assertThat(result.getContent()).contains("Hi Mallory");
 
     // verify that the request is sent correctly
-    try (var requestInputStream = fileLoader.apply("maskingRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request, true, true)));
-    }
+    final String request = fileLoaderStr.apply("maskingRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request, true, true)));
   }
 
   private static Runnable[] errorHandlingCalls() {
@@ -645,19 +702,19 @@ class OrchestrationUnitTest {
     softly
         .assertThatThrownBy(request::run)
         .describedAs("Server errors should be handled")
-        .isInstanceOf(OrchestrationClientException.class)
+        .isExactlyInstanceOf(OrchestrationClientException.class)
         .hasMessageContaining("500");
 
     softly
         .assertThatThrownBy(request::run)
         .describedAs("Error objects from Orchestration should be interpreted")
-        .isInstanceOf(OrchestrationClientException.class)
+        .isExactlyInstanceOf(OrchestrationClientException.class)
         .hasMessageContaining("'config' is a required property");
 
     softly
         .assertThatThrownBy(request::run)
         .describedAs("Failures while parsing error message should be handled")
-        .isInstanceOf(OrchestrationClientException.class)
+        .isExactlyInstanceOf(OrchestrationClientException.class)
         .hasMessageContaining("400")
         .extracting(e -> e.getSuppressed()[0])
         .isInstanceOf(JsonParseException.class);
@@ -665,13 +722,13 @@ class OrchestrationUnitTest {
     softly
         .assertThatThrownBy(request::run)
         .describedAs("Non-JSON responses should be handled")
-        .isInstanceOf(OrchestrationClientException.class)
+        .isExactlyInstanceOf(OrchestrationClientException.class)
         .hasMessageContaining("Failed to parse");
 
     softly
         .assertThatThrownBy(request::run)
         .describedAs("Empty responses should be handled")
-        .isInstanceOf(OrchestrationClientException.class)
+        .isExactlyInstanceOf(OrchestrationClientException.class)
         .hasMessageContaining("HTTP Response is empty");
 
     softly.assertAll();
@@ -808,6 +865,35 @@ class OrchestrationUnitTest {
       }
 
       Mockito.verify(inputStream, times(1)).close();
+    }
+  }
+
+  @Test
+  void testStreamingErrorHandlingBadRequest() throws IOException {
+    try (var inputStream = fileLoader.apply("streamError.txt")) {
+      final var httpClient = mock(HttpClient.class);
+      ApacheHttpClient5Accessor.setHttpClientFactory(destination -> httpClient);
+
+      // Create a mock response
+      final var mockResponse = new BasicClassicHttpResponse(200, "OK");
+      final var inputStreamEntity = new InputStreamEntity(inputStream, ContentType.TEXT_PLAIN);
+      mockResponse.setEntity(inputStreamEntity);
+      mockResponse.setHeader("Content-Type", "text/event-stream");
+
+      // Configure the HttpClient mock to return the mock response
+      doReturn(mockResponse).when(httpClient).executeOpen(any(), any(), any());
+
+      val wrongConfig =
+          new OrchestrationModuleConfig()
+              .withLlmConfig(GPT_4O_MINI.withVersion("wrong-version"))
+              .withInputFiltering(new AzureContentFilter().hate(AzureFilterThreshold.ALLOW_SAFE));
+      val prompt = new OrchestrationPrompt("HelloWorld!");
+
+      assertThatThrownBy(
+              () -> client.streamChatCompletion(prompt, wrongConfig).forEach(System.out::println))
+          .isExactlyInstanceOf(OrchestrationClientException.class)
+          .hasMessageContaining("400")
+          .hasMessageContaining("Model gpt-5 in version wrong-version not found.");
     }
   }
 
@@ -991,12 +1077,10 @@ class OrchestrationUnitTest {
     assertThat(orchestrationResult.getChoices().get(0).getFinishReason()).isEqualTo("stop");
     assertThat(orchestrationResult.getChoices().get(0).getMessage().getRole()).isEqualTo(ASSISTANT);
 
-    try (var requestInputStream = fileLoader.apply("multiMessageRequest.json")) {
-      final String requestBody = new String(requestInputStream.readAllBytes());
-      verify(
-          postRequestedFor(urlPathEqualTo("/v2/completion"))
-              .withRequestBody(equalToJson(requestBody)));
-    }
+    final String requestBody = fileLoaderStr.apply("multiMessageRequest.json");
+    verify(
+        postRequestedFor(urlPathEqualTo("/v2/completion"))
+            .withRequestBody(equalToJson(requestBody)));
   }
 
   //    Example class
@@ -1054,10 +1138,8 @@ class OrchestrationUnitTest {
     assertThat(translation.language).isEqualTo("German");
     assertThat(translation.translation).isEqualTo("Apfel");
 
-    try (var requestInputStream = fileLoader.apply("jsonSchemaRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("jsonSchemaRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -1119,10 +1201,8 @@ class OrchestrationUnitTest {
     final var message = client.chatCompletion(prompt, configWithJsonResponse).getContent();
     assertThat(message).isEqualTo("{\"language\": \"German\", \"translation\": \"Apfel\"}");
 
-    try (var requestInputStream = fileLoader.apply("jsonObjectRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("jsonObjectRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -1152,10 +1232,8 @@ class OrchestrationUnitTest {
         .isEqualTo(
             "```json\n{\n  \"word\": \"apple\",\n  \"translation\": \"Apfel\",\n  \"language\": \"German\"\n}\n```");
 
-    try (var requestInputStream = fileLoader.apply("responseFormatTextRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("responseFormatTextRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -1179,10 +1257,8 @@ class OrchestrationUnitTest {
       assertThat(response.getOriginalResponse().getIntermediateResults().getTemplating())
           .hasSize(2);
 
-      try (var requestInputStream = fileLoader.apply("templateReferenceByIdRequest.json")) {
-        final String request = new String(requestInputStream.readAllBytes());
-        verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-      }
+      final String request = fileLoaderStr.apply("templateReferenceByIdRequest.json");
+      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
     }
   }
 
@@ -1205,10 +1281,8 @@ class OrchestrationUnitTest {
     assertThat(response.getContent()).startsWith("I sistemi ERP (Enterprise Resource Planning)");
     assertThat(response.getOriginalResponse().getIntermediateResults().getTemplating()).hasSize(2);
 
-    try (var requestInputStream = fileLoader.apply("templateReferenceByScenarioRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("templateReferenceByScenarioRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -1231,10 +1305,8 @@ class OrchestrationUnitTest {
 
     final var response = client.chatCompletion(prompt, configWithTemplate);
 
-    try (var requestInputStream = fileLoader.apply("localTemplateRequest.json")) {
-      final String request = new String(requestInputStream.readAllBytes());
-      verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
-    }
+    final String request = fileLoaderStr.apply("localTemplateRequest.json");
+    verify(postRequestedFor(anyUrl()).withRequestBody(equalToJson(request)));
   }
 
   @Test
@@ -1278,155 +1350,5 @@ class OrchestrationUnitTest {
     assertThat(messageListTools.get(0)).isInstanceOf(UserMessage.class);
     assertThat(messageListTools.get(1)).isInstanceOf(AssistantMessage.class);
     assertThat(messageListTools.get(2)).isInstanceOf(ToolMessage.class);
-  }
-
-  @Test
-  void testEmbeddingCallWithMasking() {
-
-    stubFor(
-        post(urlEqualTo("/v2/embeddings"))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(
-                        """
-                        {
-                          "request_id": "2ee98443-e1ee-9503-b800-e38b5b80fe45",
-                          "intermediate_results": {
-                            "input_masking": {
-                              "message": "Embedding input is masked successfully.",
-                              "data": {
-                                "masked_input": "['Hello', 'MASKED_PERSON', '!']"
-                              }
-                            }
-                          },
-                          "final_result": {
-                            "object": "list",
-                            "data": [
-                              {
-                                "object": "embedding",
-                                "embedding": [
-                                  0.43988228,
-                                  -0.82985526,
-                                  -0.15936942,
-                                  0.041005015,
-                                  0.30127057
-                                ],
-                                "index": 0
-                              }
-                            ],
-                            "model": "text-embedding-3-large",
-                            "usage": {
-                              "prompt_tokens": 10,
-                              "total_tokens": 10
-                            }
-                          }
-                        }
-                        """)));
-
-    val dpiConfig =
-        DPIConfig.create()
-            .type(DPIConfig.TypeEnum.SAP_DATA_PRIVACY_INTEGRATION)
-            .method(DPIConfig.MethodEnum.ANONYMIZATION)
-            .entities(List.of(DPIStandardEntity.create().type(DPIEntities.PERSON)));
-    val maskingConfig = MaskingModuleConfigProviders.create().providers(List.of(dpiConfig));
-
-    val modelParams =
-        EmbeddingsModelParams.create()
-            .encodingFormat(EmbeddingsModelParams.EncodingFormatEnum.FLOAT)
-            .dimensions(5)
-            .normalize(false);
-    val modelConfig =
-        EmbeddingsModelConfig.create()
-            .model(
-                EmbeddingsModelDetails.create().name("text-embedding-3-large").params(modelParams));
-
-    val orchestrationConfig =
-        EmbeddingsOrchestrationConfig.create()
-            .modules(
-                EmbeddingsModuleConfigs.create().embeddings(modelConfig).masking(maskingConfig));
-
-    val inputText =
-        EmbeddingsInput.create().text(EmbeddingsInputText.create("['Hello', 'Müller', '!']"));
-
-    val request = EmbeddingsPostRequest.create().config(orchestrationConfig).input(inputText);
-
-    EmbeddingsPostResponse response = client.embed(request);
-
-    assertThat(response).isNotNull();
-    assertThat(response.getRequestId()).isEqualTo("2ee98443-e1ee-9503-b800-e38b5b80fe45");
-
-    val orchestrationResult = response.getFinalResult();
-    assertThat(orchestrationResult).isNotNull();
-    assertThat(orchestrationResult.getObject()).isEqualTo(EmbeddingsResponse.ObjectEnum.LIST);
-    assertThat(orchestrationResult.getModel()).isEqualTo("text-embedding-3-large");
-
-    val data = orchestrationResult.getData();
-    assertThat(data).isNotEmpty();
-    assertThat(data.get(0).getEmbedding())
-        .isEqualTo(
-            Embedding.create(
-                List.of(
-                    BigDecimal.valueOf(0.43988228),
-                    BigDecimal.valueOf(-0.82985526),
-                    BigDecimal.valueOf(-0.15936942),
-                    BigDecimal.valueOf(0.041005015),
-                    BigDecimal.valueOf(0.30127057))));
-    assertThat(data.get(0).getIndex()).isZero();
-
-    val usage = orchestrationResult.getUsage();
-    assertThat(usage).isNotNull();
-    assertThat(usage.getPromptTokens()).isEqualTo(10);
-    assertThat(usage.getTotalTokens()).isEqualTo(10);
-
-    val moduleResults = response.getIntermediateResults();
-    assertThat(moduleResults).isNotNull();
-    assertThat(moduleResults.getInputMasking()).isNotNull();
-    assertThat(moduleResults.getInputMasking().getMessage())
-        .isEqualTo("Embedding input is masked successfully.");
-    assertThat(moduleResults.getInputMasking().getData()).isNotNull();
-    assertThat(moduleResults.getInputMasking().getData())
-        .isEqualTo(Map.of("masked_input", "['Hello', 'MASKED_PERSON', '!']"));
-
-    verify(
-        postRequestedFor(urlEqualTo("/v2/embeddings"))
-            .withRequestBody(
-                equalToJson(
-                    """
-                    {
-                      "config": {
-                        "modules": {
-                          "embeddings": {
-                            "model": {
-                              "name": "text-embedding-3-large",
-                              "version": "latest",
-                              "params": {
-                                "encoding_format": "float",
-                                "dimensions": 5,
-                                "normalize": false
-                              }
-                            }
-                          },
-                          "masking": {
-                            "providers": [
-                              {
-                                "type": "sap_data_privacy_integration",
-                                "method": "anonymization",
-                                "entities": [
-                                  {
-                                    "type": "profile-person"
-                                  }
-                                ],
-                                "allowlist" : [ ]
-                              }
-                            ]
-                          }
-                        }
-                      },
-                      "input": {
-                        "text": "['Hello', 'Müller', '!']"
-                      }
-                    }
-                    """)));
   }
 }

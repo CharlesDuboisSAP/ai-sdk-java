@@ -2,6 +2,7 @@
 ![CodeQL](https://github.com/SAP/ai-sdk-java/actions/workflows/github-code-scanning/codeql/badge.svg)
 [![REUSE status](https://api.reuse.software/badge/git.fsfe.org/reuse/api)](https://api.reuse.software/info/git.fsfe.org/reuse/api)
 [![Fosstars security rating](https://github.com/SAP/ai-sdk-java/actions/workflows/fosstars-report.yml/badge.svg?branch=main)](https://github.com/SAP/ai-sdk-java/blob/fosstars-report/fosstars_report.md)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SAP/ai-sdk-java)
 
 # <img src="https://sap.github.io/cloud-sdk/img/logo.svg" alt="SAP Cloud SDK" width="30"/> SAP Cloud SDK for AI (for Java)
 
@@ -30,24 +31,26 @@ The SDK simplifies the setup and interaction with SAP AI Core, allowing you to f
 
 ## General Requirements
 
-To use the SDK in a Java application, it is necessary to understand the technical prerequisites and required versions for common dependencies.
+#### Development Environment
 
-- Java 17 or higher.
-- Access to an **SAP AI Core Service** instance.
+These are required on the developer side to build and run applications with the SDK:
 
-Please refer to [this documentation on **how to connect the SDK to AI Core**](https://sap.github.io/ai-sdk/docs/java/guides/connecting-to-ai-core).
+* **Java JDK**: 17 or higher (21 LTS recommended).
+* **SAP Cloud SDK**: 5.6.0 or later (latest recommended, added as a Maven dependency).
 
-The following table lists the required versions, based on the latest release:
+#### SAP AI Core Service instance
 
-| Dependency             | Minimum Version | Recommended Version |
-|------------------------|-----------------|---------------------|
-| JDK                    | 17 (LTS)        | 21 (LTS)            |
-| SAP Cloud SDK          | 5.6.0           | latest              |
-| (optional) CAP Java    | 3.0.0           | latest              |
-| (optional) Spring Boot | 3.0             | latest              |
-| (optional) Spring AI   | 1.0.0           | latest              |
+To make of use the services supported by the SDK, you need to have access to an SAP AI Core Service instance. Checkout [how to connect](https://sap.github.io/ai-sdk/docs/java/guides/connecting-to-ai-core).
 
-See [an example `pom.xml` in our Spring Boot application](sample-code/spring-app/pom.xml).
+#### Optional Integrations
+
+The SDK can be combined with popular Java frameworks. These are not required for core functionality, but version compatibility is listed for reference:
+
+* **Spring AI** ≥ 1.0.0
+* **Spring Boot** ≥ 3.0
+* **CAP Java** ≥ 3.0.0
+
+👉 See an [example `pom.xml`](sample-code/spring-app/pom.xml) in our sample Spring Boot application.
 
 > [!WARNING]  
 > All classes under any of the `...model` packages are generated from an OpenAPI specification and marked as `@Beta`.
@@ -159,6 +162,7 @@ For SAP internal development, you can also use `SNAPSHOT` builds from the [inter
 
 The AI SDK leverages the destination concept from the SAP Cloud SDK to manage the connection to AI Core.
 This opens up a wide range of possibilities to customize the connection, including adding custom headers.
+The following shows how to add custom headers to all requests sent to AI Core.
 
 ```java
 var service = new AiCoreService();
@@ -170,15 +174,19 @@ var destination =
 // AI Core client
 service = service.withBaseDestination(destination);
 DeploymentApi client = new DeploymentApi(service);
-
-// Orchestration client
-OrchestrationClient client = new OrchestrationClient(destination);
-
-// OpenAI client
-OpenAiClient client2 = OpenAiClient.withCustomDestination(destination);
 ```
 
 For more information, please refer to the [AI Core connectivity guide](https://sap.github.io/ai-sdk/docs/java/guides/connecting-to-ai-core) and the [SAP Cloud SDK documentation](https://sap.github.io/cloud-sdk/docs/java/features/connectivity/http-destinations).
+
+There is also a convenient method to add custom headers to single calls through the Orchestration or OpenAI client.
+
+```java
+var client = new OrchestrationClient();
+
+var result = client.withHeader("my-header-key", "my-header-value").chatCompletion(prompt, config);
+```
+
+For more information on this feature, see the respective documentation of the [OrchestrationClient](https://sap.github.io/ai-sdk/docs/java/orchestration/chat-completion#custom-headers) and [OpenAIClient](https://sap.github.io/ai-sdk/docs/java/foundation-models/openai/chat-completion#custom-headers).
 
 ### _"There's a vulnerability warning `CVE-2021-41251`?"_
 

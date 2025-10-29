@@ -1,6 +1,6 @@
 /*
- * Internal Orchestration Service API
- * Orchestration is an inference service which provides common additional capabilities for business AI scenarios, such as content filtering and data masking. At the core of the service is the LLM module which allows for an easy, harmonized access to the language models of gen AI hub. The service is designed to be modular and extensible, allowing for the addition of new modules in the future. Each module can be configured independently and at runtime, allowing for a high degree of flexibility in the orchestration of AI services.
+ * Prompt Registry API
+ * Prompt Storage service for Design time & Runtime prompt templates.
  *
  *
  *
@@ -9,7 +9,7 @@
  * Do not edit the class manually.
  */
 
-package com.sap.ai.sdk.orchestration.model;
+package com.sap.ai.sdk.prompt.registry.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -25,17 +25,17 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-/** SAPDocumentTranslation */
+/** LlamaGuard38bFilterConfig */
 // CHECKSTYLE:OFF
-public class SAPDocumentTranslation
+public class LlamaGuard38bFilterConfig implements InputFilterConfig, OutputFilterConfig
 // CHECKSTYLE:ON
 {
-  /** Type of document translation provider */
+  /** Name of the filter provider type */
   public enum TypeEnum {
-    /** The SAP_DOCUMENT_TRANSLATION option of this SAPDocumentTranslation */
-    SAP_DOCUMENT_TRANSLATION("sap_document_translation"),
+    /** The LLAMA_GUARD_3_8B option of this LlamaGuard38bFilterConfig */
+    LLAMA_GUARD_3_8B("llama_guard_3_8b"),
 
-    /** The UNKNOWN_DEFAULT_OPEN_API option of this SAPDocumentTranslation */
+    /** The UNKNOWN_DEFAULT_OPEN_API option of this LlamaGuard38bFilterConfig */
     UNKNOWN_DEFAULT_OPEN_API("unknown_default_open_api");
 
     private String value;
@@ -70,7 +70,7 @@ public class SAPDocumentTranslation
      * Get the enum value from a String value
      *
      * @param value The String value
-     * @return The enum value of type SAPDocumentTranslation
+     * @return The enum value of type LlamaGuard38bFilterConfig
      */
     @JsonCreator
     @Nonnull
@@ -88,30 +88,30 @@ public class SAPDocumentTranslation
   private TypeEnum type;
 
   @JsonProperty("config")
-  private SAPDocumentTranslationConfig config;
+  private LlamaGuard38b config;
 
   @JsonAnySetter @JsonAnyGetter
   private final Map<String, Object> cloudSdkCustomFields = new LinkedHashMap<>();
 
-  /** Default constructor for SAPDocumentTranslation. */
-  protected SAPDocumentTranslation() {}
+  /** Default constructor for LlamaGuard38bFilterConfig. */
+  protected LlamaGuard38bFilterConfig() {}
 
   /**
-   * Set the type of this {@link SAPDocumentTranslation} instance and return the same instance.
+   * Set the type of this {@link LlamaGuard38bFilterConfig} instance and return the same instance.
    *
-   * @param type Type of document translation provider
-   * @return The same instance of this {@link SAPDocumentTranslation} class
+   * @param type Name of the filter provider type
+   * @return The same instance of this {@link LlamaGuard38bFilterConfig} class
    */
   @Nonnull
-  public SAPDocumentTranslation type(@Nonnull final TypeEnum type) {
+  public LlamaGuard38bFilterConfig type(@Nonnull final TypeEnum type) {
     this.type = type;
     return this;
   }
 
   /**
-   * Type of document translation provider
+   * Name of the filter provider type
    *
-   * @return type The type of this {@link SAPDocumentTranslation} instance.
+   * @return type The type of this {@link LlamaGuard38bFilterConfig} instance.
    */
   @Nonnull
   public TypeEnum getType() {
@@ -119,22 +119,22 @@ public class SAPDocumentTranslation
   }
 
   /**
-   * Set the type of this {@link SAPDocumentTranslation} instance.
+   * Set the type of this {@link LlamaGuard38bFilterConfig} instance.
    *
-   * @param type Type of document translation provider
+   * @param type Name of the filter provider type
    */
   public void setType(@Nonnull final TypeEnum type) {
     this.type = type;
   }
 
   /**
-   * Set the config of this {@link SAPDocumentTranslation} instance and return the same instance.
+   * Set the config of this {@link LlamaGuard38bFilterConfig} instance and return the same instance.
    *
-   * @param config The config of this {@link SAPDocumentTranslation}
-   * @return The same instance of this {@link SAPDocumentTranslation} class
+   * @param config The config of this {@link LlamaGuard38bFilterConfig}
+   * @return The same instance of this {@link LlamaGuard38bFilterConfig} class
    */
   @Nonnull
-  public SAPDocumentTranslation config(@Nonnull final SAPDocumentTranslationConfig config) {
+  public LlamaGuard38bFilterConfig config(@Nonnull final LlamaGuard38b config) {
     this.config = config;
     return this;
   }
@@ -142,24 +142,24 @@ public class SAPDocumentTranslation
   /**
    * Get config
    *
-   * @return config The config of this {@link SAPDocumentTranslation} instance.
+   * @return config The config of this {@link LlamaGuard38bFilterConfig} instance.
    */
   @Nonnull
-  public SAPDocumentTranslationConfig getConfig() {
+  public LlamaGuard38b getConfig() {
     return config;
   }
 
   /**
-   * Set the config of this {@link SAPDocumentTranslation} instance.
+   * Set the config of this {@link LlamaGuard38bFilterConfig} instance.
    *
-   * @param config The config of this {@link SAPDocumentTranslation}
+   * @param config The config of this {@link LlamaGuard38bFilterConfig}
    */
-  public void setConfig(@Nonnull final SAPDocumentTranslationConfig config) {
+  public void setConfig(@Nonnull final LlamaGuard38b config) {
     this.config = config;
   }
 
   /**
-   * Get the names of the unrecognizable properties of the {@link SAPDocumentTranslation}.
+   * Get the names of the unrecognizable properties of the {@link LlamaGuard38bFilterConfig}.
    *
    * @return The set of properties names
    */
@@ -170,7 +170,7 @@ public class SAPDocumentTranslation
   }
 
   /**
-   * Get the value of an unrecognizable property of this {@link SAPDocumentTranslation} instance.
+   * Get the value of an unrecognizable property of this {@link LlamaGuard38bFilterConfig} instance.
    *
    * @deprecated Use {@link #toMap()} instead.
    * @param name The name of the property
@@ -182,13 +182,13 @@ public class SAPDocumentTranslation
   public Object getCustomField(@Nonnull final String name) throws NoSuchElementException {
     if (!cloudSdkCustomFields.containsKey(name)) {
       throw new NoSuchElementException(
-          "SAPDocumentTranslation has no field with name '" + name + "'.");
+          "LlamaGuard38bFilterConfig has no field with name '" + name + "'.");
     }
     return cloudSdkCustomFields.get(name);
   }
 
   /**
-   * Get the value of all properties of this {@link SAPDocumentTranslation} instance including
+   * Get the value of all properties of this {@link LlamaGuard38bFilterConfig} instance including
    * unrecognized properties.
    *
    * @return The map of all properties
@@ -203,7 +203,7 @@ public class SAPDocumentTranslation
   }
 
   /**
-   * Set an unrecognizable property of this {@link SAPDocumentTranslation} instance. If the map
+   * Set an unrecognizable property of this {@link LlamaGuard38bFilterConfig} instance. If the map
    * previously contained a mapping for the key, the old value is replaced by the specified value.
    *
    * @param customFieldName The name of the property
@@ -222,10 +222,10 @@ public class SAPDocumentTranslation
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final SAPDocumentTranslation saPDocumentTranslation = (SAPDocumentTranslation) o;
-    return Objects.equals(this.cloudSdkCustomFields, saPDocumentTranslation.cloudSdkCustomFields)
-        && Objects.equals(this.type, saPDocumentTranslation.type)
-        && Objects.equals(this.config, saPDocumentTranslation.config);
+    final LlamaGuard38bFilterConfig llamaGuard38bFilterConfig = (LlamaGuard38bFilterConfig) o;
+    return Objects.equals(this.cloudSdkCustomFields, llamaGuard38bFilterConfig.cloudSdkCustomFields)
+        && Objects.equals(this.type, llamaGuard38bFilterConfig.type)
+        && Objects.equals(this.config, llamaGuard38bFilterConfig.config);
   }
 
   @Override
@@ -237,7 +237,7 @@ public class SAPDocumentTranslation
   @Nonnull
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("class SAPDocumentTranslation {\n");
+    sb.append("class LlamaGuard38bFilterConfig {\n");
     sb.append("    type: ").append(toIndentedString(type)).append("\n");
     sb.append("    config: ").append(toIndentedString(config)).append("\n");
     cloudSdkCustomFields.forEach(
@@ -258,20 +258,20 @@ public class SAPDocumentTranslation
   }
 
   /**
-   * Create a type-safe, fluent-api builder object to construct a new {@link SAPDocumentTranslation}
-   * instance with all required arguments.
+   * Create a type-safe, fluent-api builder object to construct a new {@link
+   * LlamaGuard38bFilterConfig} instance with all required arguments.
    */
   public static Builder create() {
-    return (type) -> (config) -> new SAPDocumentTranslation().type(type).config(config);
+    return (type) -> (config) -> new LlamaGuard38bFilterConfig().type(type).config(config);
   }
 
   /** Builder helper class. */
   public interface Builder {
     /**
-     * Set the type of this {@link SAPDocumentTranslation} instance.
+     * Set the type of this {@link LlamaGuard38bFilterConfig} instance.
      *
-     * @param type Type of document translation provider
-     * @return The SAPDocumentTranslation builder.
+     * @param type Name of the filter provider type
+     * @return The LlamaGuard38bFilterConfig builder.
      */
     Builder1 type(@Nonnull final TypeEnum type);
   }
@@ -279,11 +279,11 @@ public class SAPDocumentTranslation
   /** Builder helper class. */
   public interface Builder1 {
     /**
-     * Set the config of this {@link SAPDocumentTranslation} instance.
+     * Set the config of this {@link LlamaGuard38bFilterConfig} instance.
      *
-     * @param config The config of this {@link SAPDocumentTranslation}
-     * @return The SAPDocumentTranslation instance.
+     * @param config The config of this {@link LlamaGuard38bFilterConfig}
+     * @return The LlamaGuard38bFilterConfig instance.
      */
-    SAPDocumentTranslation config(@Nonnull final SAPDocumentTranslationConfig config);
+    LlamaGuard38bFilterConfig config(@Nonnull final LlamaGuard38b config);
   }
 }

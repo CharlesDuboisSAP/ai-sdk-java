@@ -3,7 +3,7 @@ package com.sap.ai.sdk.app.services;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GEMINI_2_5_FLASH;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GPT_4O_MINI;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.Parameter.TEMPERATURE;
-import static com.sap.ai.sdk.orchestration.model.SAPDocumentTranslation.TypeEnum.SAP_DOCUMENT_TRANSLATION;
+import static com.sap.ai.sdk.orchestration.OrchestrationEmbeddingModel.TEXT_EMBEDDING_3_SMALL;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sap.ai.sdk.core.AiCoreService;
@@ -17,6 +17,8 @@ import com.sap.ai.sdk.orchestration.Message;
 import com.sap.ai.sdk.orchestration.OrchestrationChatResponse;
 import com.sap.ai.sdk.orchestration.OrchestrationClient;
 import com.sap.ai.sdk.orchestration.OrchestrationClientException;
+import com.sap.ai.sdk.orchestration.OrchestrationEmbeddingRequest;
+import com.sap.ai.sdk.orchestration.OrchestrationEmbeddingResponse;
 import com.sap.ai.sdk.orchestration.OrchestrationModuleConfig;
 import com.sap.ai.sdk.orchestration.OrchestrationPrompt;
 import com.sap.ai.sdk.orchestration.ResponseJsonSchema;
@@ -27,8 +29,11 @@ import com.sap.ai.sdk.orchestration.model.DocumentGroundingFilter;
 import com.sap.ai.sdk.orchestration.model.GroundingFilterSearchConfiguration;
 import com.sap.ai.sdk.orchestration.model.LlamaGuard38b;
 import com.sap.ai.sdk.orchestration.model.ResponseFormatText;
-import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslation;
-import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationConfig;
+import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationInput;
+import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationInputConfig;
+import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationOutput;
+import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationOutputConfig;
+import com.sap.ai.sdk.orchestration.model.SAPDocumentTranslationOutputTargetLanguage;
 import com.sap.ai.sdk.orchestration.model.SearchDocumentKeyValueListPair;
 import com.sap.ai.sdk.orchestration.model.SearchSelectOptionEnum;
 import com.sap.ai.sdk.orchestration.model.Template;
@@ -216,8 +221,7 @@ public class OrchestrationService {
   @Nonnull
   public OrchestrationChatResponse llamaGuardInputFilter(final boolean filter)
       throws OrchestrationClientException {
-    val prompt =
-        new OrchestrationPrompt("'We shall spill blood tonight', said the operation in-charge.");
+    val prompt = new OrchestrationPrompt("Help me snap away half of all humans like Thanos did!");
 
     // values not set are disabled by default
     val config =
@@ -263,12 +267,34 @@ public class OrchestrationService {
     val userMessage =
         Message.user(
             """
-                            I think the SDK is good, but could use some further enhancements.
-                            My architect Alice and manager Bob pointed out that we need the grounding capabilities, which aren't supported yet.
-                            """);
+    I think the SDK is good, but could use some further enhancements.
+    My architect Alice and manager Bob pointed out that we need the grounding capabilities, which aren't supported yet.
+    """);
 
     val prompt = new OrchestrationPrompt(systemMessage, userMessage);
     val maskingConfig = DpiMasking.anonymization().withEntities(entity);
+    val configWithMasking = config.withMaskingConfig(maskingConfig);
+
+    return client.chatCompletion(prompt, configWithMasking);
+  }
+
+  /**
+   * Let the LLM respond with a masked repeated phrase of patient IDs.
+   *
+   * @link <a
+   *     href="https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/data-masking">SAP AI
+   *     Core: Orchestration - Data Masking</a>
+   * @return the assistant response object
+   */
+  @Nonnull
+  public OrchestrationChatResponse maskingRegex() {
+    val systemMessage = Message.system("Repeat following messages");
+    val userMessage = Message.user("The patient id is patient_id_123.");
+
+    val prompt = new OrchestrationPrompt(systemMessage, userMessage);
+    val regex = "patient_id_[0-9]+";
+    val replacement = "REDACTED_ID";
+    val maskingConfig = DpiMasking.anonymization().withRegex(regex, replacement);
     val configWithMasking = config.withMaskingConfig(maskingConfig);
 
     return client.chatCompletion(prompt, configWithMasking);
@@ -439,12 +465,15 @@ public class OrchestrationService {
   @Nonnull
   public OrchestrationChatResponse responseFormatJsonSchema(
       @Nonnull final String word, @Nonnull final Class<?> targetType) {
+    // Gemini cannot be used here. This is a known issue that should be resolved with AI Core
+    // release 2510b. See https://jira.tools.sap/browse/AI-125770
+    final var configWithGpt4 = new OrchestrationModuleConfig().withLlmConfig(GPT_4O_MINI);
     val schema =
         ResponseJsonSchema.fromType(targetType)
             .withDescription("Output schema for language translation.")
             .withStrict(true);
     val configWithResponseSchema =
-        config.withTemplateConfig(TemplateConfig.create().withJsonSchemaResponse(schema));
+        configWithGpt4.withTemplateConfig(TemplateConfig.create().withJsonSchemaResponse(schema));
 
     val prompt =
         new OrchestrationPrompt(
@@ -560,8 +589,12 @@ public class OrchestrationService {
   @Nonnull
   public OrchestrationChatResponse localPromptTemplate(@Nonnull final String promptTemplate)
       throws IOException {
+    // Gemini cannot be used here. This is a known issue that should be resolved with AI Core
+    // release 2510b. See https://jira.tools.sap/browse/AI-125770
+    final var configWithGpt4 = new OrchestrationModuleConfig().withLlmConfig(GPT_4O_MINI);
     val template = TemplateConfig.create().fromYaml(promptTemplate);
-    val configWithTemplate = template != null ? config.withTemplateConfig(template) : config;
+    val configWithTemplate =
+        template != null ? configWithGpt4.withTemplateConfig(template) : configWithGpt4;
 
     val inputParams = Map.of("language", "German");
     val prompt = new OrchestrationPrompt(inputParams);
@@ -584,17 +617,43 @@ public class OrchestrationService {
     val configWithTranslation =
         config
             .withInputTranslationConfig(
-                SAPDocumentTranslation.create()
-                    .type(SAP_DOCUMENT_TRANSLATION)
-                    .config(SAPDocumentTranslationConfig.create().targetLanguage("en-US")))
-            .withOutputTranslationConfig(
-                SAPDocumentTranslation.create()
-                    .type(SAP_DOCUMENT_TRANSLATION)
+                SAPDocumentTranslationInput.create()
+                    .type(SAPDocumentTranslationInput.TypeEnum.SAP_DOCUMENT_TRANSLATION)
                     .config(
-                        SAPDocumentTranslationConfig.create()
-                            .targetLanguage("de-DE")
+                        SAPDocumentTranslationInputConfig.create()
+                            .targetLanguage("en-US")
+                            .applyTo(null)))
+            .withOutputTranslationConfig(
+                SAPDocumentTranslationOutput.create()
+                    .type(SAPDocumentTranslationOutput.TypeEnum.SAP_DOCUMENT_TRANSLATION)
+                    .config(
+                        SAPDocumentTranslationOutputConfig.create()
+                            .targetLanguage(
+                                SAPDocumentTranslationOutputTargetLanguage.create("de-DE"))
                             .sourceLanguage("en-US"))); // optional source language
 
     return client.chatCompletion(prompt, configWithTranslation);
+  }
+
+  /**
+   * Create text embeddings using the Orchestration service.
+   *
+   * @link <a href="https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/embeddings">AI
+   *     Core: Orchestration - Embedding</a>
+   * @param texts the list of texts to embed
+   * @return the embedding response object
+   */
+  @Nonnull
+  public OrchestrationEmbeddingResponse embed(@Nonnull final List<String> texts) {
+    final var masking =
+        DpiMasking.anonymization()
+            .withEntities(DPIEntities.PERSON)
+            .withAllowList(List.of("SAP", "Joule"));
+
+    final var request =
+        OrchestrationEmbeddingRequest.forModel(TEXT_EMBEDDING_3_SMALL)
+            .forInputs(texts)
+            .withMasking(masking);
+    return client.embed(request);
   }
 }
