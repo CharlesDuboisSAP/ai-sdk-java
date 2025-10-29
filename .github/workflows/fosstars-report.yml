@@ -70,12 +70,17 @@ jobs:
           path: ${{ env.CVE_CACHE_DIR }}
           key: ${{ env.CVE_CACHE_KEY }}
 
-      # This action changes the active branch!
-      - name: "Fosstars Rating"
-        uses: SAP/fosstars-rating-core-action@v1.14.0
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@v2.4.3
         with:
-          report-branch: fosstars-report
-          token: ${{ secrets.GITHUB_TOKEN }}
+          results_file: results.sarif
+          results_format: sarif
+          # Scorecard team runs a weekly scan of public GitHub repos,
+          # see https://github.com/ossf/scorecard#public-data.
+          # Setting `publish_results: true` helps us scale by leveraging your workflow to
+          # extract the results instead of relying on our own infrastructure to run scans.
+          # And it's free for you!
+          publish_results: true
 
       - name: "Slack Notification"
         if: failure()
