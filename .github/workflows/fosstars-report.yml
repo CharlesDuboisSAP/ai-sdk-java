@@ -1,4 +1,4 @@
-name: "Fosstars (Security)"
+name: "Security Rating & Vulnerability Scan"
 on:
   workflow_dispatch:
   schedule:
@@ -21,6 +21,12 @@ jobs:
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v6
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
 
       - name: "Setup java"
         uses: actions/setup-java@v5
@@ -74,13 +80,6 @@ jobs:
         with:
           path: ${{ env.CVE_CACHE_DIR }}
           key: ${{ env.CVE_CACHE_KEY }}
-
-      # This action changes the active branch!
-      - name: "Fosstars Rating"
-        uses: SAP/fosstars-rating-core-action@v1.14.0
-        with:
-          report-branch: fosstars-report
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Slack Notification"
         if: failure()
