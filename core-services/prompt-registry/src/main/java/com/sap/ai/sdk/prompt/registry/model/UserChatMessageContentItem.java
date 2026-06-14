@@ -38,6 +38,9 @@ public class UserChatMessageContentItem
     /** The IMAGE_URL option of this UserChatMessageContentItem */
     IMAGE_URL("image_url"),
 
+    /** The FILE option of this UserChatMessageContentItem */
+    FILE("file"),
+
     /** The UNKNOWN_DEFAULT_OPEN_API option of this UserChatMessageContentItem */
     UNKNOWN_DEFAULT_OPEN_API("unknown_default_open_api");
 
@@ -95,6 +98,12 @@ public class UserChatMessageContentItem
 
   @JsonProperty("image_url")
   private ImageContentUrl imageUrl;
+
+  @JsonProperty("file")
+  private FileContent _file;
+
+  @JsonProperty("cache_control")
+  private CacheControl cacheControl;
 
   @JsonAnySetter @JsonAnyGetter
   private final Map<String, Object> cloudSdkCustomFields = new LinkedHashMap<>();
@@ -197,6 +206,69 @@ public class UserChatMessageContentItem
   }
 
   /**
+   * Set the _file of this {@link UserChatMessageContentItem} instance and return the same instance.
+   *
+   * @param _file The _file of this {@link UserChatMessageContentItem}
+   * @return The same instance of this {@link UserChatMessageContentItem} class
+   */
+  @Nonnull
+  public UserChatMessageContentItem _file(@Nullable final FileContent _file) {
+    this._file = _file;
+    return this;
+  }
+
+  /**
+   * Get _file
+   *
+   * @return _file The _file of this {@link UserChatMessageContentItem} instance.
+   */
+  @Nonnull
+  public FileContent getFile() {
+    return _file;
+  }
+
+  /**
+   * Set the _file of this {@link UserChatMessageContentItem} instance.
+   *
+   * @param _file The _file of this {@link UserChatMessageContentItem}
+   */
+  public void setFile(@Nullable final FileContent _file) {
+    this._file = _file;
+  }
+
+  /**
+   * Set the cacheControl of this {@link UserChatMessageContentItem} instance and return the same
+   * instance.
+   *
+   * @param cacheControl The cacheControl of this {@link UserChatMessageContentItem}
+   * @return The same instance of this {@link UserChatMessageContentItem} class
+   */
+  @Nonnull
+  public UserChatMessageContentItem cacheControl(@Nullable final CacheControl cacheControl) {
+    this.cacheControl = cacheControl;
+    return this;
+  }
+
+  /**
+   * Get cacheControl
+   *
+   * @return cacheControl The cacheControl of this {@link UserChatMessageContentItem} instance.
+   */
+  @Nonnull
+  public CacheControl getCacheControl() {
+    return cacheControl;
+  }
+
+  /**
+   * Set the cacheControl of this {@link UserChatMessageContentItem} instance.
+   *
+   * @param cacheControl The cacheControl of this {@link UserChatMessageContentItem}
+   */
+  public void setCacheControl(@Nullable final CacheControl cacheControl) {
+    this.cacheControl = cacheControl;
+  }
+
+  /**
    * Get the names of the unrecognizable properties of the {@link UserChatMessageContentItem}.
    *
    * @return The set of properties names
@@ -239,6 +311,8 @@ public class UserChatMessageContentItem
     if (type != null) declaredFields.put("type", type);
     if (text != null) declaredFields.put("text", text);
     if (imageUrl != null) declaredFields.put("imageUrl", imageUrl);
+    if (_file != null) declaredFields.put("_file", _file);
+    if (cacheControl != null) declaredFields.put("cacheControl", cacheControl);
     return declaredFields;
   }
 
@@ -267,12 +341,14 @@ public class UserChatMessageContentItem
             this.cloudSdkCustomFields, userChatMessageContentItem.cloudSdkCustomFields)
         && Objects.equals(this.type, userChatMessageContentItem.type)
         && Objects.equals(this.text, userChatMessageContentItem.text)
-        && Objects.equals(this.imageUrl, userChatMessageContentItem.imageUrl);
+        && Objects.equals(this.imageUrl, userChatMessageContentItem.imageUrl)
+        && Objects.equals(this._file, userChatMessageContentItem._file)
+        && Objects.equals(this.cacheControl, userChatMessageContentItem.cacheControl);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, text, imageUrl, cloudSdkCustomFields);
+    return Objects.hash(type, text, imageUrl, _file, cacheControl, cloudSdkCustomFields);
   }
 
   @Override
@@ -283,6 +359,8 @@ public class UserChatMessageContentItem
     sb.append("    type: ").append(toIndentedString(type)).append("\n");
     sb.append("    text: ").append(toIndentedString(text)).append("\n");
     sb.append("    imageUrl: ").append(toIndentedString(imageUrl)).append("\n");
+    sb.append("    _file: ").append(toIndentedString(_file)).append("\n");
+    sb.append("    cacheControl: ").append(toIndentedString(cacheControl)).append("\n");
     cloudSdkCustomFields.forEach(
         (k, v) ->
             sb.append("    ").append(k).append(": ").append(toIndentedString(v)).append("\n"));

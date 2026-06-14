@@ -381,14 +381,26 @@ paths:
               - declarative
         - name: include_spec
           in: query
+          deprecated: true
+          description: 'DEPRECATED: Use includeSpec instead'
           schema:
             type: boolean
             default: false
-        - name: resolve_template_ref
+        - name: includeSpec
           in: query
           schema:
             type: boolean
+        - name: resolve_template_ref
+          in: query
+          deprecated: true
+          description: 'DEPRECATED: Use resolveTemplateRef instead'
+          schema:
+            type: boolean
             default: false
+        - name: resolveTemplateRef
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful response
@@ -428,14 +440,26 @@ paths:
             type: string
         - name: include_spec
           in: query
+          deprecated: true
+          description: 'DEPRECATED: Use includeSpec instead'
           schema:
             type: boolean
             default: false
-        - name: resolve_template_ref
+        - name: includeSpec
           in: query
           schema:
             type: boolean
+        - name: resolve_template_ref
+          in: query
+          deprecated: true
+          description: 'DEPRECATED: Use resolveTemplateRef instead'
+          schema:
+            type: boolean
             default: false
+        - name: resolveTemplateRef
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful response
@@ -466,9 +490,15 @@ paths:
             format: uuid
         - name: resolve_template_ref
           in: query
+          deprecated: true
+          description: 'DEPRECATED: Use resolveTemplateRef instead'
           schema:
             type: boolean
             default: false
+        - name: resolveTemplateRef
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful response
@@ -1016,12 +1046,46 @@ components:
               type: string
         spec:
           $ref: '#/components/schemas/OrchestrationConfig'
+    CacheControl:
+      type: object
+      description: |
+        Cache control directive for Anthropic prompt caching. Only applicable to Anthropic Claude models. When set, marks the content block as a cache breakpoint.
+      additionalProperties: false
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - ephemeral
+        ttl:
+          type: string
+          description: |
+            Time-to-live for the cache entry. Default is "5m" (5 minutes). "1h" (1 hour) is supported on select models (e.g. Claude Opus 4.5, Haiku 4.5, Sonnet 4.5).
+          enum:
+            - 5m
+            - 1h
+    schemas-TextContent:
+      type: object
+      required:
+        - type
+        - text
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          enum:
+            - text
+        text:
+          type: string
+        cache_control:
+          $ref: '#/components/schemas/CacheControl'
     ChatMessageContent:
       oneOf:
         - type: string
         - type: array
           items:
-            $ref: '#/components/schemas/TextContent'
+            $ref: '#/components/schemas/schemas-TextContent'
           minItems: 1
     SystemChatMessage:
       type: object
@@ -1047,6 +1111,18 @@ components:
         detail:
           type: string
           default: auto
+    FileContent:
+      type: object
+      required:
+        - file_data
+      additionalProperties: false
+      properties:
+        file_data:
+          type: string
+          description: Base64 encoded file content or file URL
+        filename:
+          type: string
+          description: Name of the file
     UserChatMessageContentItem:
       type: object
       additionalProperties: false
@@ -1056,10 +1132,15 @@ components:
           enum:
             - text
             - image_url
+            - file
         text:
           type: string
         image_url:
           $ref: '#/components/schemas/ImageContentUrl'
+        file:
+          $ref: '#/components/schemas/FileContent'
+        cache_control:
+          $ref: '#/components/schemas/CacheControl'
       required:
         - type
     UserChatMessageContent:
@@ -1173,6 +1254,22 @@ components:
       minItems: 1
       items:
         $ref: '#/components/schemas/ChatMessage'
+    schemas-ChatCompletionTool:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          enum:
+            - function
+          description: The type of the tool. Currently, only `function` is supported.
+        function:
+          $ref: '#/components/schemas/FunctionObject'
+        cache_control:
+          $ref: '#/components/schemas/CacheControl'
+      required:
+        - type
+        - function
     Template:
       type: object
       required:
@@ -1200,7 +1297,7 @@ components:
           description: |
             A list of tools the model may call. Used to provide a list of functions the model may generate JSON inputs for. This is the same as the OpenAI definition.
           items:
-            $ref: '#/components/schemas/ChatCompletionTool'
+            $ref: '#/components/schemas/schemas-ChatCompletionTool'
       example:
         template:
           - role: user
@@ -1297,7 +1394,7 @@ components:
           type: integer
           default: 600
           minimum: 1
-          maximum: 600
+          maximum: 1200
         max_retries:
           description: Maximum number of retries for the LLM request. This parameter is currently ignored for Vertex AI models.
           type: integer
@@ -1307,13 +1404,12 @@ components:
     PromptTemplatingModuleConfig:
       type: object
       required:
-        - prompt
         - model
       additionalProperties: false
       properties:
         prompt:
           description: |
-            The prompt template to be used. Can be either a user defined template or a reference to a template in the prompt registry.
+            The prompt template to be used. Can be either a user defined template or a reference to a template in the prompt registry. If omitted, messages_history must be provided in the request body.
           oneOf:
             - $ref: '#/components/schemas/Template'
             - $ref: '#/components/schemas/TemplateRef'
@@ -1625,6 +1721,12 @@ components:
               type: boolean
               default: false
               description: controls whether the input to the grounding module will be masked with the configuration supplied in the masking module
+        mask_file_input_method:
+          description: Type of masking method to be used for file inputs. Required if file inputs are provided.
+          type: string
+          enum:
+            - anonymization
+            - skip
     MaskingProviderConfig:
       oneOf:
         - $ref: '#/components/schemas/DPIConfig'
@@ -1647,7 +1749,7 @@ components:
           properties:
             masking_providers:
               deprecated: true
-              description: 'List of masking service providers. **DEPRECATED**:  will be removed Sept 15, 2026. Use `providers` property instead.'
+              description: 'List of masking service providers. **DEPRECATED**:  will be removed March 20, 2027. Use `providers` property instead.'
               type: array
               minItems: 1
               items:
